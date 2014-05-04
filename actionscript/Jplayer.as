@@ -2,13 +2,13 @@
  * jPlayer Plugin for jQuery JavaScript Library
  * http://www.jplayer.org
  *
- * Copyright (c) 2009 - 2013 Happyworm Ltd
- * Licensed under the MIT.
+ * Copyright (c) 2009 - 2014 Happyworm Ltd
+ * Licensed under the MIT license.
  * http://opensource.org/licenses/MIT
  *
  * Author: Mark J Panaghiston
- * Version: 2.5.0
- * Date: 7th November 2013
+ * Version: 2.6.0
+ * Date: 2nd April 2014
  *
  * FlashVars expected: (AS3 property of: loaderInfo.parameters)
  *	id: 	(URL Encoded: String) Id of jPlayer instance
@@ -122,7 +122,7 @@ package {
 			var myContextMenu:ContextMenu = new ContextMenu();
 			myContextMenu.hideBuiltInItems();
 			var menuItem_jPlayer:ContextMenuItem = new ContextMenuItem("jPlayer " + JplayerStatus.VERSION);
-			var menuItem_happyworm:ContextMenuItem = new ContextMenuItem("© 2009-2013 Happyworm Ltd", true);
+			var menuItem_happyworm:ContextMenuItem = new ContextMenuItem("© 2009-2014 Happyworm Ltd", true);
 			menuItem_jPlayer.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, menuSelectHandler_jPlayer);
 			menuItem_happyworm.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, menuSelectHandler_happyworm);
 			myContextMenu.customItems.push(menuItem_jPlayer, menuItem_happyworm);
@@ -279,6 +279,9 @@ package {
 
 				myMp3Player.addEventListener(JplayerEvent.JPLAYER_CANPLAY, jPlayerFlashEvent); // only MP3 atm
 				myMp3Player.addEventListener(JplayerEvent.JPLAYER_CANPLAYTHROUGH, jPlayerFlashEvent); // only MP3 atm
+
+				myMp3Player.addEventListener(JplayerEvent.JPLAYER_LOADEDMETADATA, jPlayerFlashEvent);
+				myMp3Player.addEventListener(JplayerEvent.JPLAYER_DURATIONCHANGE, jPlayerFlashEvent); // only MP3 atm
 			} else {
 				myMp3Player.removeEventListener(JplayerEvent.JPLAYER_ERROR, jPlayerFlashEvent);
 				myMp3Player.removeEventListener(JplayerEvent.JPLAYER_PROGRESS, jPlayerFlashEvent);
@@ -297,6 +300,9 @@ package {
 
 				myMp3Player.removeEventListener(JplayerEvent.JPLAYER_CANPLAY, jPlayerFlashEvent); // only MP3 atm
 				myMp3Player.removeEventListener(JplayerEvent.JPLAYER_CANPLAYTHROUGH, jPlayerFlashEvent); // only MP3 atm
+
+				myMp3Player.removeEventListener(JplayerEvent.JPLAYER_LOADEDMETADATA, jPlayerFlashEvent);
+				myMp3Player.removeEventListener(JplayerEvent.JPLAYER_DURATIONCHANGE, jPlayerFlashEvent); // only MP3 atm
 			}
 		}
 		private function listenToMp4(active:Boolean):void {

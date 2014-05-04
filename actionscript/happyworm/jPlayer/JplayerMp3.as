@@ -2,12 +2,12 @@
  * jPlayer Plugin for jQuery JavaScript Library
  * http://www.jplayer.org
  *
- * Copyright (c) 2009 - 2013 Happyworm Ltd
+ * Copyright (c) 2009 - 2014 Happyworm Ltd
  * Licensed under the MIT license.
  * http://opensource.org/licenses/MIT
  *
  * Author: Mark J Panaghiston
- * Date: 28th May 2013
+ * Date: 15th December 2013
  */
 
 package happyworm.jPlayer {
@@ -100,6 +100,8 @@ package happyworm.jPlayer {
 			myStatus.loaded();
 			progressUpdates(false);
 			progressEvent();
+			this.dispatchEvent(new JplayerEvent(JplayerEvent.JPLAYER_LOADEDMETADATA, myStatus));
+			this.dispatchEvent(new JplayerEvent(JplayerEvent.JPLAYER_DURATIONCHANGE, myStatus));
 			this.dispatchEvent(new JplayerEvent(JplayerEvent.JPLAYER_CANPLAYTHROUGH, myStatus));
 		}
 		private function soundCompleteHandler(e:Event):void {

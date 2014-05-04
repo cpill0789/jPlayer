@@ -2,13 +2,13 @@
  * jPlayer Plugin for jQuery JavaScript Library
  * http://www.jplayer.org
  *
- * Copyright (c) 2009 - 2013 Happyworm Ltd
+ * Copyright (c) 2009 - 2014 Happyworm Ltd
  * Licensed under the MIT license.
  * http://opensource.org/licenses/MIT
  *
  * Author: Mark J Panaghiston
- * Version: 2.5.0
- * Date: 7th November 2013
+ * Version: 2.6.1
+ * Date: 3rd April 2014
  */
 
 /* Code verified using http://www.jshint.com/ */
@@ -113,6 +113,7 @@
 	$.each(
 		[
 			'ready',
+			'setmedia', // Fires when the media is set
 			'flashreset', // Similar to the ready event if the Flash solution is set to display:none and then shown again or if it's reloaded for another reason by the browser. For example, using CSS position:fixed on Firefox for the full screen feature.
 			'resize', // Occurs when the size changes through a full/restore screen operation or if the size/sizeFull options are changed.
 			'repeat', // Occurs when the repeat status changes. Usually through clicks on the repeat button of the interface.
@@ -343,6 +344,8 @@
 						''
 					],
 					// http://developer.apple.com/library/safari/#documentation/AudioVideo/Reference/HTMLVideoElementClassReference/HTMLVideoElement/HTMLVideoElement.html
+					// https://developer.apple.com/library/safari/samplecode/HTML5VideoEventFlow/Listings/events_js.html#//apple_ref/doc/uid/DTS40010085-events_js-DontLinkElementID_5
+					// Events: 'webkitbeginfullscreen' and 'webkitendfullscreen'
 					webkitVideo: [
 						'webkitSupportsFullscreen',
 						'webkitDisplayingFullscreen',
@@ -468,8 +471,8 @@
 	$.jPlayer.prototype = {
 		count: 0, // Static Variable: Change it via prototype.
 		version: { // Static Object
-			script: "2.5.0",
-			needFlash: "2.5.0",
+			script: "2.6.1",
+			needFlash: "2.6.0",
 			flash: "unknown"
 		},
 		options: { // Instanced in $.jPlayer() constructor
@@ -479,6 +482,9 @@
 			preload: 'metadata',  // HTML5 Spec values: none, metadata, auto.
 			volume: 0.8, // The volume. Number 0 to 1.
 			muted: false,
+			remainingDuration: false, // When true, the remaining time is shown in the duration GUI element.
+			toggleDuration: false, // When true, clicks on the duration toggle between the duration and remaining display.
+			captureDuration: true, // When true, clicks on the duration are captured and no longer propagate up the DOM.
 			playbackRate: 1,
 			defaultPlaybackRate: 1,
 			minPlaybackRate: 0.5,
@@ -502,6 +508,7 @@
 				playbackRateBarValue: ".jp-playback-rate-bar-value",
 				currentTime: ".jp-current-time",
 				duration: ".jp-duration",
+				title: ".jp-title",
 				fullScreen: ".jp-full-screen", // *
 				restoreScreen: ".jp-restore-screen", // *
 				repeat: ".jp-repeat",
@@ -653,6 +660,7 @@
 			currentPercentAbsolute: 0,
 			currentTime: 0,
 			duration: 0,
+			remaining: 0,
 			videoWidth: 0, // Intrinsic width of the video in pixels.
 			videoHeight: 0, // Intrinsic height of the video in pixels.
 			readyState: 0,
@@ -790,6 +798,17 @@
 			// Add key bindings focus to 1st jPlayer instanced with key control enabled.
 			if(this.options.keyEnabled && !$.jPlayer.focus) {
 				$.jPlayer.focus = this;
+			}
+
+			// A fix for Android where older (2.3) and even some 4.x devices fail to work when changing the *audio* SRC and then playing immediately.
+			this.androidFix = {
+				setMedia: false, // True when media set
+				play: false, // True when a progress event will instruct the media to play
+				pause: false, // True when a progress event will instruct the media to pause at a time.
+				time: NaN // The play(time) parameter
+			};
+			if($.jPlayer.platform.android) {
+				this.options.preload = this.options.preload !== 'auto' ? 'metadata' : 'auto'; // Default to metadata, but allow auto.
 			}
 
 			this.formats = []; // Array based on supplied string option. Order defines priority.
@@ -1259,6 +1278,15 @@
 					if(self.internal.cmdsIgnored && this.readyState > 0) { // Detect iOS executed the command
 						self.internal.cmdsIgnored = false;
 					}
+					self.androidFix.setMedia = false; // Disable the fix after the first progress event.
+					if(self.androidFix.play) { // Play Android audio - performing the fix.
+						self.androidFix.play = false;
+						self.play(self.androidFix.time);
+					}
+					if(self.androidFix.pause) { // Pause Android audio at time - performing the fix.
+						self.androidFix.pause = false;
+						self.pause(self.androidFix.time);
+					}
 					self._getHtmlStatus(mediaElement);
 					self._updateInterface();
 					self._trigger($.jPlayer.event.progress);
@@ -1420,6 +1448,8 @@
 			this.status.currentPercentAbsolute = cpa;
 			this.status.currentTime = ct;
 
+			this.status.remaining = this.status.duration - this.status.currentTime;
+
 			this.status.videoWidth = media.videoWidth;
 			this.status.videoHeight = media.videoHeight;
 
@@ -1569,6 +1599,7 @@
 			this.status.currentPercentAbsolute = status.currentPercentAbsolute;
 			this.status.currentTime = status.currentTime;
 			this.status.duration = status.duration;
+			this.status.remaining = status.duration - status.currentTime;
 
 			this.status.videoWidth = status.videoWidth;
 			this.status.videoHeight = status.videoHeight;
@@ -1629,11 +1660,33 @@
 					this.css.jq.playBar.width(this.status.currentPercentRelative+"%");
 				}
 			}
+			var currentTimeText = '';
 			if(this.css.jq.currentTime.length) {
-				this.css.jq.currentTime.text(this._convertTime(this.status.currentTime));
+				currentTimeText = this._convertTime(this.status.currentTime);
+				if(currentTimeText !== this.css.jq.currentTime.text()) {
+					this.css.jq.currentTime.text(this._convertTime(this.status.currentTime));
+				}
 			}
+			var durationText = '',
+				duration = this.status.duration,
+				remaining = this.status.remaining;
 			if(this.css.jq.duration.length) {
-				this.css.jq.duration.text(this._convertTime(this.status.duration));
+				if(typeof this.status.media.duration === 'string') {
+					durationText = this.status.media.duration;
+				} else {
+					if(typeof this.status.media.duration === 'number') {
+						duration = this.status.media.duration;
+						remaining = duration - this.status.currentTime;
+					}
+					if(this.options.remainingDuration) {
+						durationText = (remaining > 0 ? '-' : '') + this._convertTime(remaining);
+					} else {
+						durationText = this._convertTime(duration);
+					}
+				}
+				if(durationText !== this.css.jq.duration.text()) {
+					this.css.jq.duration.text(durationText);
+				}
 			}
 		},
 		_convertTime: ConvertTime.prototype.time,
@@ -1667,7 +1720,7 @@
 		_absoluteMediaUrls: function(media) {
 			var self = this;
 			$.each(media, function(type, url) {
-				if(self.format[type]) {
+				if(url && self.format[type]) {
 					media[type] = self._qualifyURL(url);
 				}
 			});
@@ -1688,6 +1741,11 @@
 			this._resetMedia();
 			this._resetGate();
 			this._resetActive();
+
+			// Clear the Android Fix.
+			this.androidFix.setMedia = false;
+			this.androidFix.play = false;
+			this.androidFix.pause = false;
 
 			// Convert all media URLs to absolute URLs.
 			media = this._absoluteMediaUrls(media);
@@ -1717,6 +1775,11 @@
 								self.html.audio.gate = true;
 								self._html_setAudio(media);
 								self.html.active = true;
+
+								// Setup the Android Fix - Only for HTML audio.
+								if($.jPlayer.platform.android) {
+									self.androidFix.setMedia = true;
+								}
 							} else {
 								self.flash.gate = true;
 								self._flash_setAudio(media);
@@ -1750,10 +1813,22 @@
 						}
 					}
 				}
+				if(this.css.jq.title.length) {
+					if(typeof media.title === 'string') {
+						this.css.jq.title.html(media.title);
+						if(this.htmlElement.audio) {
+							this.htmlElement.audio.setAttribute('title', media.title);
+						}
+						if(this.htmlElement.video) {
+							this.htmlElement.video.setAttribute('title', media.title);
+						}
+					}
+				}
 				this.status.srcSet = true;
 				this.status.media = $.extend({}, media);
 				this._updateButtons(false);
 				this._updateInterface();
+				this._trigger($.jPlayer.event.setmedia);
 			} else { // jPlayer cannot support any formats provided in this browser
 				// Send an error event
 				this._error( {
@@ -1980,9 +2055,6 @@
 				this._muted(false);
 			}
 		},
-		volumeBarValue: function() { // Handles clicks on the volumeBarValue
-			// The volumeBar handles this event as the event propagates up the DOM.
-		},
 		_updateVolume: function(v) {
 			if(v === undefined) {
 				v = this.options.volume;
@@ -2059,7 +2131,7 @@
 						this.css.jq[fn] = []; // To comply with the css.jq[fn].length check before its use. As of jQuery 1.4 could have used $() for an empty set. 
 					}
 
-					if(this.css.jq[fn].length) {
+					if(this.css.jq[fn].length && this[fn]) {
 						var handler = function(e) {
 							e.preventDefault();
 							self[fn](e);
@@ -2093,6 +2165,14 @@
 				});
 			}
 		},
+		duration: function(e) {
+			if(this.options.toggleDuration) {
+				if(this.options.captureDuration) {
+					e.stopPropagation();
+				}
+				this._setOption("remainingDuration", !this.options.remainingDuration);
+			}
+		},
 		seekBar: function(e) { // Handles clicks on the seekBar
 			if(this.css.jq.seekBar.length) {
 				// Using $(e.currentTarget) to enable multiple seek bars
@@ -2103,9 +2183,6 @@
 					p = 100 * x / w;
 				this.playHead(p);
 			}
-		},
-		playBar: function() { // Handles clicks on the playBar
-			// The seekBar handles this event as the event propagates up the DOM.
 		},
 		playbackRate: function(pbr) {
 			this._setOption("playbackRate", pbr);
@@ -2128,9 +2205,6 @@
 				pbr = ratio * (this.options.maxPlaybackRate - this.options.minPlaybackRate) + this.options.minPlaybackRate;
 				this.playbackRate(pbr);
 			}
-		},
-		playbackRateBarValue: function() { // Handles clicks on the playbackRateBarValue
-			// The playbackRateBar handles this event as the event propagates up the DOM.
 		},
 		_updatePlaybackRate: function() {
 			var pbr = this.options.playbackRate,
@@ -2164,21 +2238,6 @@
 				this._updateButtons();
 				this._trigger($.jPlayer.event.repeat);
 			}
-		},
-
-		// Plan to review the cssSelector method to cope with missing associated functions accordingly.
-
-		currentTime: function() { // Handles clicks on the text
-			// Added to avoid errors using cssSelector system for the text
-		},
-		duration: function() { // Handles clicks on the text
-			// Added to avoid errors using cssSelector system for the text
-		},
-		gui: function() { // Handles clicks on the gui
-			// Added to avoid errors using cssSelector system for the gui
-		},
-		noSolution: function() { // Handles clicks on the error message
-			// Added to avoid errors using cssSelector system for no-solution
 		},
 
 		// Options code adapted from ui.widget.js (1.8.7).  Made changes so the key can use dot notation. To match previous getData solution in jPlayer 1.
@@ -2334,6 +2393,13 @@
 					break;
 				case "loop" :
 					this._loop(value);
+					break;
+				case "remainingDuration" :
+					this.options[key] = value;
+					this._updateInterface();
+					break;
+				case "toggleDuration" :
+					this.options[key] = value;
 					break;
 				case "nativeVideoControls" :
 					this.options[key] = $.extend({}, this.options[key], value); // store a merged copy of it, incase not all properties changed.
@@ -2496,7 +2562,7 @@
 		_fullscreenRemoveEventListeners: function() {
 			var fs = $.jPlayer.nativeFeatures.fullscreen;
 			if(this.internal.fullscreenchangeHandler) {
-				document.addEventListener(fs.event.fullscreenchange, this.internal.fullscreenchangeHandler, false);
+				document.removeEventListener(fs.event.fullscreenchange, this.internal.fullscreenchangeHandler, false);
 			}
 		},
 		_fullscreenchange: function() {
@@ -2612,9 +2678,16 @@
 			var self = this,
 				media = this.htmlElement.media;
 
+			this.androidFix.pause = false; // Cancel the pause fix.
+
 			this._html_load(); // Loads if required and clears any delayed commands.
 
-			if(!isNaN(time)) {
+			// Setup the Android Fix.
+			if(this.androidFix.setMedia) {
+				this.androidFix.play = true;
+				this.androidFix.time = time;
+
+			} else if(!isNaN(time)) {
 
 				// Attempt to play it, since iOS has been ignoring commands
 				if(this.internal.cmdsIgnored) {
@@ -2644,7 +2717,9 @@
 		_html_pause: function(time) {
 			var self = this,
 				media = this.htmlElement.media;
-			
+
+			this.androidFix.play = false; // Cancel the play fix.
+
 			if(time > 0) { // We do not want the stop() command, which does pause(0), causing a load operation.
 				this._html_load(); // Loads if required and clears any delayed commands.
 			} else {
@@ -2654,7 +2729,12 @@
 			// Order of these commands is important for Safari (Win) and IE9. Pause then change currentTime.
 			media.pause();
 
-			if(!isNaN(time)) {
+			// Setup the Android Fix.
+			if(this.androidFix.setMedia) {
+				this.androidFix.pause = true;
+				this.androidFix.time = time;
+
+			} else if(!isNaN(time)) {
 				try {
 					if(!media.seekable || typeof media.seekable === "object" && media.seekable.length > 0) {
 						media.currentTime = time;
@@ -2677,6 +2757,8 @@
 				media = this.htmlElement.media;
 
 			this._html_load(); // Loads if required and clears any delayed commands.
+
+			// This playHead() method needs a refactor to apply the android fix.
 
 			try {
 				if(typeof media.seekable === "object" && media.seekable.length > 0) {
@@ -2921,8 +3003,8 @@
 			var msg = "jPlayer " + this.version.script + " : id='" + this.internal.self.id +"' : " + message;
 			if(!this.options.consoleAlerts) {
 				alert(msg);
-			} else if(console && console.log) {
-				console.log(msg);
+			} else if(window.console && window.console.log) {
+				window.console.log(msg);
 			}
 		},
 		_emulateHtmlBridge: function() {
