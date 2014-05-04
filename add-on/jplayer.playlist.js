@@ -216,7 +216,7 @@
 				$(this.cssSelector.playlist + " ul").slideUp(displayTime, function() {
 					var $this = $(this);
 					$(this).empty();
-					
+
 					$.each(self.playlist, function(i) {
 						$this.append(self._createListItem(self.playlist[i]));
 					});
@@ -277,13 +277,6 @@
 				$(this).blur();
 				return false;
 			});
-
-			// Create live handlers that disable free media links to force access via right click
-			//$(this.cssSelector.playlist).off("click", "a." + this.options.playlistOptions.freeItemClass).on("click", "a." + this.options.playlistOptions.freeItemClass, function() {
-			//	$(this).parent().parent().find("." + self.options.playlistOptions.itemClass).click();
-			//	$(this).blur();
-			//	return false;
-			//});
 
 			// Create live handlers for the remove controls
 			$(this.cssSelector.playlist).off("click", "a." + this.options.playlistOptions.removeItemClass).on("click", "a." + this.options.playlistOptions.removeItemClass, function() {
