@@ -79,9 +79,11 @@
 		});
 
 		// Create a play event handler to pause other instances
-		$(this.cssSelector.jPlayer).bind($.jPlayer.event.play, function() {
-			$(this).jPlayer("pauseOthers");
-		});
+		if(this.options.pauseOthers) {
+			$(this.cssSelector.jPlayer).bind($.jPlayer.event.play, function() {
+				$(this).jPlayer("pauseOthers");
+			});
+		}
 
 		// Create a resize event handler to show the title in full screen mode.
 		$(this.cssSelector.jPlayer).bind($.jPlayer.event.resize, function(event) {
@@ -140,6 +142,7 @@
 				loopOnPrevious: false,
 				shuffleOnLoop: true,
 				enableRemoveControls: false,
+				pauseOthers: true,
 				displayTime: 'slow',
 				addTime: 'fast',
 				removeTime: 'fast',
