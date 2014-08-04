@@ -13,6 +13,8 @@
  * Requires:
  *  - jQuery 1.7.0+
  *  - jPlayer 2.3.0+
+ *
+ * Modified by Carl Pillot to allow for toggling behavior of pausing other players August 4, 2014.
  */
 
 /* Code verified using http://www.jshint.com/ */
