@@ -14,7 +14,10 @@
  *  - jQuery 1.7.0+
  *  - jPlayer 2.7.0+
  *
- * Modified by Carl Pillot to allow for toggling behavior of pausing other players August 4, 2014.
+ * Modified by Carl Pillot:
+ *  Change free links to open in a new window.
+ *  Allow for toggling behavior of pausing other players. - August 4, 2014
+ *  Allow download url to be set manually for free links. - October 15, 2014
  */
 
 /* Code verified using http://www.jshint.com/ */
@@ -258,7 +261,10 @@
 			// Create links to free media
 			if(media.free) {
 				var first = true;
-				listItem += "<span class='" + this.options.playlistOptions.freeGroupClass + "'>(";
+				listItem += "<span class='" + this.options.playlistOptions.freeGroupClass + "'>("
+						 + "<a class='" + self.options.playlistOptions.freeItemClass + "' href='" + media.downloadURL + "' target='_blank' tabindex='-1'>" + self.options.downloadText + "</a>"
+				         + ")</span>";
+				/*
 				$.each(media, function(property,value) {
 					if($.jPlayer.prototype.format[property]) { // Check property is a media format.
 						if(first) {
@@ -271,6 +277,7 @@
 					}
 				});
 				listItem += ")</span>";
+				*/
 			}
 
 			// The title is given next in the HTML otherwise the float:right on the free media corrupts in IE6/7
