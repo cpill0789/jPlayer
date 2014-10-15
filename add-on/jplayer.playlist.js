@@ -267,7 +267,7 @@
 							listItem += " | ";
 						}
 
-						listItem += "<a class='" + self.options.playlistOptions.freeItemClass + "' href='" + value + "' target='_blank' tabindex='-1'>" + self.downloadText + "</a>";
+						listItem += "<a class='" + self.options.playlistOptions.freeItemClass + "' href='" + value + "' target='_blank' tabindex='-1'>" + self.options.downloadText + "</a>";
 					}
 				});
 				listItem += ")</span>";
@@ -293,16 +293,6 @@
 				self.blur(this);
 			});
 
-<<<<<<< HEAD
-=======
-			// Create live handlers that disable free media links to force access via right click
-			$(this.cssSelector.playlist).off("click", "a." + this.options.playlistOptions.freeItemClass).on("click", "a." + this.options.playlistOptions.freeItemClass, function(e) {
-				e.preventDefault();
-				$(this).parent().parent().find("." + self.options.playlistOptions.itemClass).click();
-				self.blur(this);
-			});
-
->>>>>>> master
 			// Create live handlers for the remove controls
 			$(this.cssSelector.playlist).off("click", "a." + this.options.playlistOptions.removeItemClass).on("click", "a." + this.options.playlistOptions.removeItemClass, function(e) {
 				e.preventDefault();
